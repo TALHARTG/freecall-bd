@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreeCall BD - Laptop to Mobile Calling</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://jsdelivr.net"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="brand">
+                <span class="status-dot" id="networkDot"></span>
+                <h1>FreeCall BD</h1>
+            </div>
+            <span class="badge">Sponsored VoIP</span>
+        </header>
+
+        <div class="balance-bar">
+            <span>ফ্রি মিনিট: <strong id="freeMinutesText">05:00</strong></span>
+            <span>নেটওয়ার্ক: <strong id="networkStatusText">যাচাই হচ্ছে...</strong></span>
+        </div>
+
+        <div class="display-screen">
+            <div class="country-code">+88</div>
+            <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" maxlength="11" autocomplete="off">
+            <button type="button" id="backspaceBtn" class="clear-btn" title="একটি সংখ্যা মুছুন">⌫</button>
+        </div>
+
+        <div class="status-area">
+            <div id="callStatus" class="call-status">কল করার জন্য প্রস্তুত</div>
+            <div id="callTimer" class="call-timer hidden">00:00</div>
+        </div>
+
+        <div class="keypad">
+            <button type="button" class="key" data-num="1">1</button>
+            <button type="button" class="key" data-num="2">2<span>ABC</span></button>
+            <button type="button" class="key" data-num="3">3<span>DEF</span></button>
+            <button type="button" class="key" data-num="4">4<span>GHI</span></button>
+            <button type="button" class="key" data-num="5">5<span>JKL</span></button>
+            <button type="button" class="key" data-num="6">6<span>MNO</span></button>
+            <button type="button" class="key" data-num="7">7<span>PQRS</span></button>
+            <button type="button" class="key" data-num="8">8<span>TUV</span></button>
+            <button type="button" class="key" data-num="9">9<span>WXYZ</span></button>
+            <button type="button" class="key" data-num="*">*</button>
+            <button type="button" class="key" data-num="0">0<span>+</span></button>
+            <button type="button" class="key" data-num="#">#</button>
+        </div>
+
+        <div class="action-buttons">
+            <button type="button" id="callBtn" class="call-btn">📞 কল করুন</button>
+            <button type="button" id="endCallBtn" class="end-btn hidden">📵 কল কাটুন</button>
+        </div>
+
+        <footer class="ad-banner">
+            <p>বিজ্ঞাপন স্পনসর: প্রাপকের জন্য ইনকামিং কল সম্পূর্ণ ফ্রি</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
