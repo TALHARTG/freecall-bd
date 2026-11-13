@@ -2,60 +2,176 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FreeCall BD - Laptop to Mobile Calling</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FreeCall BD - Mobile VoIP App</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://jsdelivr.net"></script>
+    <!-- ৭ নম্বর manifest.json ফাইলের সংযোগটি নিচে যুক্ত করা হয়েছে -->
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <div class="app-container">
+    <div class="mobile-frame">
+        <!-- উপরের অ্যাপ হেডার -->
         <header class="app-header">
             <div class="brand">
-                <span class="status-dot" id="networkDot"></span>
+                <span class="status-dot"></span>
                 <h1>FreeCall BD</h1>
             </div>
-            <span class="badge">Sponsored VoIP</span>
+            <div class="header-actions">
+                <button type="button" id="simIncomingBtn" class="incoming-sim-btn" title="ইনকামিং কল টেস্ট করুন">📲 ইনকামিং</button>
+                <div class="balance-pill">⏱️ <strong id="freeMinutesText">05:00</strong></div>
+            </div>
         </header>
 
-        <div class="balance-bar">
-            <span>ফ্রি মিনিট: <strong id="freeMinutesText">05:00</strong></span>
-            <span>নেটওয়ার্ক: <strong id="networkStatusText">যাচাই হচ্ছে...</strong></span>
+        <!-- ফ্রি মিনিট অর্জন বার -->
+        <div class="reward-bar">
+            <span id="networkStatusText">অনলাইন প্রস্তুত</span>
+            <button type="button" id="watchAdBtn" class="ad-reward-btn">🎬 বিজ্ঞাপন দেখে +২ মি. নিন</button>
         </div>
 
-        <div class="display-screen">
-            <div class="country-code">+88</div>
-            <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" maxlength="11" autocomplete="off">
-            <button type="button" id="backspaceBtn" class="clear-btn" title="একটি সংখ্যা মুছুন">⌫</button>
+        <!-- মূল কন্টেন্ট এলাকা (৩টি ট্যাব) -->
+        <main class="tab-content">
+            
+            <!-- ট্যাব ১: ডায়ালপ্যাড -->
+            <section id="tab-keypad" class="tab-pane active">
+                <div class="display-screen">
+                    <div class="country-code">+88</div>
+                    <input type="tel" id="phoneNumber" placeholder="01XXXXXXXXX" maxlength="11" autocomplete="off">
+                    <button type="button" id="saveQuickContactBtn" class="icon-action-btn" title="নম্বর সেভ করুন">👤+</button>
+                    <button type="button" id="backspaceBtn" class="icon-action-btn" title="মুছুন">⌫</button>
+                </div>
+
+                <div class="status-area">
+                    <div id="callStatus" class="call-status">কল করার জন্য প্রস্তুত</div>
+                </div>
+
+                <div class="keypad">
+                    <button type="button" class="key" data-num="1">1<span>&nbsp;</span></button>
+                    <button type="button" class="key" data-num="2">2<span>ABC</span></button>
+                    <button type="button" class="key" data-num="3">3<span>DEF</span></button>
+                    <button type="button" class="key" data-num="4">4<span>GHI</span></button>
+                    <button type="button" class="key" data-num="5">5<span>JKL</span></button>
+                    <button type="button" class="key" data-num="6">6<span>MNO</span></button>
+                    <button type="button" class="key" data-num="7">7<span>PQRS</span></button>
+                    <button type="button" class="key" data-num="8">8<span>TUV</span></button>
+                    <button type="button" class="key" data-num="9">9<span>WXYZ</span></button>
+                    <button type="button" class="key" data-num="*">*<span>&nbsp;</span></button>
+                    <button type="button" class="key" data-num="0">0<span>+</span></button>
+                    <button type="button" class="key" data-num="#">#<span>&nbsp;</span></button>
+                </div>
+
+                <div class="call-trigger-wrap">
+                    <button type="button" id="callBtn" class="round-call-btn" title="কল করুন">📞</button>
+                </div>
+            </section>
+
+            <!-- ট্যাব ২: কল হিস্ট্রি -->
+            <section id="tab-history" class="tab-pane">
+                <div class="section-header">
+                    <h2>কল হিস্ট্রি (Call Logs)</h2>
+                    <button type="button" id="clearHistoryBtn" class="text-danger-btn">সব মুছুন</button>
+                </div>
+                <div id="historyList" class="list-container">
+                    <p class="empty-msg">এখনো কোনো কল রেকর্ড নেই</p>
+                </div>
+            </section>
+
+            <!-- ট্যাব ৩: কন্টাক্টস -->
+            <section id="tab-contacts" class="tab-pane">
+                <div class="section-header">
+                    <h2>সেভ করা নম্বর (Contacts)</h2>
+                    <button type="button" id="openAddContactBtn" class="add-contact-btn">+ নতুন নম্বর</button>
+                </div>
+                <div id="contactList" class="list-container">
+                    <p class="empty-msg">কোনো কন্টাক্ট সেভ করা নেই</p>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- নিচের মোবাইল নেভিগেশন বার -->
+        <nav class="bottom-nav">
+            <button type="button" class="nav-item active" data-target="tab-keypad">
+                <span class="nav-icon">🔢</span>
+                <span>ডায়ালপ্যাড</span>
+            </button>
+            <button type="button" class="nav-item" data-target="tab-history">
+                <span class="nav-icon">🕒</span>
+                <span>কল হিস্ট্রি</span>
+            </button>
+            <button type="button" class="nav-item" data-target="tab-contacts">
+                <span class="nav-icon">👥</span>
+                <span>কন্টাক্টস</span>
+            </button>
+        </nav>
+
+        <!-- স্ক্রিন ১: ইনকামিং কল রিসিভ করার ফুল-স্ক্রিন ওভারলে -->
+        <div id="incomingCallOverlay" class="call-overlay incoming-bg hidden">
+            <span class="incoming-badge">📲 ইনকামিং কল আসছে...</span>
+            <div class="caller-avatar pulse-ring">👤</div>
+            <h2 id="incomingNameDisplay">অজানা নম্বর</h2>
+            <p id="incomingNumberDisplay">+8801700000000</p>
+            <div class="overlay-status">কল রিসিভ করতে সবুজ বাটনে চাপুন</div>
+
+            <div class="incoming-actions">
+                <div class="action-col">
+                    <button type="button" id="rejectIncomingBtn" class="round-end-btn" title="কল কাটুন">📵</button>
+                    <small>কেটে দিন</small>
+                </div>
+                <div class="action-col">
+                    <button type="button" id="acceptIncomingBtn" class="round-accept-btn" title="কল রিসিভ করুন">📞</button>
+                    <small>রিসিভ করুন</small>
+                </div>
+            </div>
         </div>
 
-        <div class="status-area">
-            <div id="callStatus" class="call-status">কল করার জন্য প্রস্তুত</div>
-            <div id="callTimer" class="call-timer hidden">00:00</div>
+        <!-- স্ক্রিন ২: চলমান কল স্ক্রিন (Outgoing / Connected) -->
+        <div id="activeCallOverlay" class="call-overlay hidden">
+            <div class="caller-avatar">👤</div>
+            <h2 id="callingNameDisplay">অজানা নম্বর</h2>
+            <p id="callingNumberDisplay">+8801XXXXXXXXX</p>
+            <div id="overlayCallStatus" class="overlay-status">রিং হচ্ছে...</div>
+            <div id="callTimer" class="overlay-timer">00:00</div>
+
+            <div class="in-call-controls">
+                <button type="button" id="muteBtn" class="control-circle-btn">
+                    <span>🎙️</span>
+                    <small>মিউট</small>
+                </button>
+                <button type="button" id="speakerBtn" class="control-circle-btn">
+                    <span>🔊</span>
+                    <small>স্পিকার</small>
+                </button>
+            </div>
+
+            <button type="button" id="endCallBtn" class="round-end-btn" title="কল কাটুন">📵</button>
         </div>
 
-        <div class="keypad">
-            <button type="button" class="key" data-num="1">1</button>
-            <button type="button" class="key" data-num="2">2<span>ABC</span></button>
-            <button type="button" class="key" data-num="3">3<span>DEF</span></button>
-            <button type="button" class="key" data-num="4">4<span>GHI</span></button>
-            <button type="button" class="key" data-num="5">5<span>JKL</span></button>
-            <button type="button" class="key" data-num="6">6<span>MNO</span></button>
-            <button type="button" class="key" data-num="7">7<span>PQRS</span></button>
-            <button type="button" class="key" data-num="8">8<span>TUV</span></button>
-            <button type="button" class="key" data-num="9">9<span>WXYZ</span></button>
-            <button type="button" class="key" data-num="*">*</button>
-            <button type="button" class="key" data-num="0">0<span>+</span></button>
-            <button type="button" class="key" data-num="#">#</button>
+        <!-- বিজ্ঞাপন পপ-আপ -->
+        <div id="adModal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <span class="ad-tag">SPONSORED AD</span>
+                <h3>ফ্রি মিনিট উপার্জন হচ্ছে...</h3>
+                <p>বিজ্ঞাপন দেখা শেষ হলেই আপনার ব্যালেন্সে <strong>+০২:০০ মিনিট</strong> ফ্রি যোগ হবে।</p>
+                <div class="ad-countdown" id="adCountdown">অপেক্ষা করুন: 5 সেকেন্ড</div>
+                <button type="button" id="claimRewardBtn" class="primary-btn hidden">✅ ২ মিনিট গ্রহণ করুন</button>
+            </div>
         </div>
 
-        <div class="action-buttons">
-            <button type="button" id="callBtn" class="call-btn">📞 কল করুন</button>
-            <button type="button" id="endCallBtn" class="end-btn hidden">📵 কল কাটুন</button>
+        <!-- নতুন কন্টাক্ট সেভ করার পপ-আপ -->
+        <div id="contactModal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <h3>নতুন কন্টাক্ট সেভ করুন</h3>
+                <input type="text" id="contactNameInput" class="modal-input" placeholder="নাম লিখুন (যেমন: বড় ভাই)">
+                <input type="tel" id="contactNumberInput" class="modal-input" placeholder="নম্বর লিখুন (01XXXXXXXXX)" maxlength="11">
+                <div class="modal-actions">
+                    <button type="button" id="cancelContactBtn" class="secondary-btn">বাতিল</button>
+                    <button type="button" id="saveContactConfirmBtn" class="primary-btn">সেভ করুন</button>
+                </div>
+            </div>
         </div>
-
-        <footer class="ad-banner">
-            <p>বিজ্ঞাপন স্পনসর: প্রাপকের জন্য ইনকামিং কল সম্পূর্ণ ফ্রি</p>
-        </footer>
     </div>
 
     <script src="script.js"></script>

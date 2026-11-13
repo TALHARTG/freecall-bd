@@ -4,192 +4,274 @@ const keys = document.querySelectorAll('.key');
 const callBtn = document.getElementById('callBtn');
 const endCallBtn = document.getElementById('endCallBtn');
 const callStatus = document.getElementById('callStatus');
-const callTimer = document.getElementById('callTimer');
 const balanceDisplay = document.getElementById('freeMinutesText');
 const networkStatusText = document.getElementById('networkStatusText');
 
+// ইনকামিং কল ওভারলে এলিমেন্ট
+const simIncomingBtn = document.getElementById('simIncomingBtn');
+const incomingCallOverlay = document.getElementById('incomingCallOverlay');
+const incomingNameDisplay = document.getElementById('incomingNameDisplay');
+const incomingNumberDisplay = document.getElementById('incomingNumberDisplay');
+const acceptIncomingBtn = document.getElementById('acceptIncomingBtn');
+const rejectIncomingBtn = document.getElementById('rejectIncomingBtn');
+
+// চলমান কল ওভারলে এলিমেন্ট
+const activeCallOverlay = document.getElementById('activeCallOverlay');
+const callingNameDisplay = document.getElementById('callingNameDisplay');
+const callingNumberDisplay = document.getElementById('callingNumberDisplay');
+const overlayCallStatus = document.getElementById('overlayCallStatus');
+const callTimer = document.getElementById('callTimer');
+const muteBtn = document.getElementById('muteBtn');
+const speakerBtn = document.getElementById('speakerBtn');
+
+// ট্যাব ও লিস্ট
+const navItems = document.querySelectorAll('.nav-item');
+const tabPanes = document.querySelectorAll('.tab-pane');
+const historyList = document.getElementById('historyList');
+const contactList = document.getElementById('contactList');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+// বিজ্ঞাপন ও কন্টাক্ট মোডাল
+const watchAdBtn = document.getElementById('watchAdBtn');
+const adModal = document.getElementById('adModal');
+const adCountdown = document.getElementById('adCountdown');
+const claimRewardBtn = document.getElementById('claimRewardBtn');
+
+const saveQuickContactBtn = document.getElementById('saveQuickContactBtn');
+const openAddContactBtn = document.getElementById('openAddContactBtn');
+const contactModal = document.getElementById('contactModal');
+const contactNameInput = document.getElementById('contactNameInput');
+const contactNumberInput = document.getElementById('contactNumberInput');
+const cancelContactBtn = document.getElementById('cancelContactBtn');
+const saveContactConfirmBtn = document.getElementById('saveContactConfirmBtn');
+
 let timerInterval = null;
 let ringTimeout = null;
+let ringtoneInterval = null;
+let adTimerInterval = null;
 let secondsElapsed = 0;
-let remainingFreeSeconds = 300;
+let remainingFreeSeconds = parseInt(localStorage.getItem('freecall_balance') || '300', 10);
+
 let isCallActive = false;
+let isCallConnected = false;
+let currentCallType = 'outgoing';
+let currentActiveNumber = '';
 
-let twilioDevice = null;
-let activeLiveCall = null;
-let gatewayMode = 'demo';
+let savedContacts = JSON.parse(localStorage.getItem('freecall_contacts') || '[]');
+let callHistory = JSON.parse(localStorage.getItem('freecall_history') || '[]');
 
-// সময়কে 00:00 ফরম্যাটে রূপান্তর
 function formatTime(totalSeconds) {
     const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
     const secs = String(totalSeconds % 60).padStart(2, '0');
     return `${mins}:${secs}`;
 }
 
-// নম্বর পরিষ্কার করা (01 দিয়ে শুরু ১১ ডিজিট পর্যন্ত রাখবে)
+function updateBalanceUI() {
+    balanceDisplay.textContent = formatTime(Math.max(0, remainingFreeSeconds));
+    localStorage.setItem('freecall_balance', remainingFreeSeconds);
+}
+updateBalanceUI();
+
+function playBeep(freq = 650, duration = 70) {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = freq;
+        gain.gain.value = 0.05;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        setTimeout(() => {
+            osc.stop();
+            ctx.close();
+        }, duration);
+    } catch (e) {}
+}
+
+function startRingtone() {
+    stopRingtone();
+    playBeep(880, 220);
+    ringtoneInterval = setInterval(() => {
+        playBeep(880, 220);
+        setTimeout(() => playBeep(1046, 220), 260);
+    }, 1400);
+}
+
+function stopRingtone() {
+    if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+    }
+}
+
 function normalizeNumber(rawValue) {
-    let cleaned = rawValue.replace(/[^0-9]/g, '');
+    let cleaned = String(rawValue).replace(/[^0-9]/g, '');
     if (cleaned.startsWith('880')) {
         cleaned = '0' + cleaned.substring(3);
     }
     return cleaned.slice(0, 11);
 }
 
-// সার্ভারের অবস্থা যাচাই করা
 async function initVoiceSystem() {
     try {
         const res = await fetch('/api/token');
         const data = await res.json();
-
-        if (data.mode === 'sip_ready' || data.mode === 'live') {
-            gatewayMode = 'live';
-            networkStatusText.textContent = 'লাইভ গেটওয়ে প্রস্তুত';
-        } else {
-            gatewayMode = 'demo';
-            networkStatusText.textContent = 'সার্ভার অনলাইন (টেস্ট)';
-        }
+        networkStatusText.textContent = data.mode === 'live' ? 'লাইভ নেটওয়ার্ক' : 'অনলাইন প্রস্তুত';
     } catch (err) {
-        networkStatusText.textContent = 'সার্ভার অফলাইন';
+        networkStatusText.textContent = 'অফলাইন মোড';
     }
 }
 initVoiceSystem();
 
-// ডায়ালপ্যাড বাটন ক্লিক (এখন শুরুর 0-ও টাইপ হবে)
+navItems.forEach(item => {
+    item.addEventListener('click', () => {
+        navItems.forEach(nav => nav.classList.remove('active'));
+        tabPanes.forEach(pane => pane.classList.remove('active'));
+        item.classList.add('active');
+        const targetEl = document.getElementById(item.getAttribute('data-target'));
+        if (targetEl) targetEl.classList.add('active');
+    });
+});
+
 keys.forEach(key => {
     key.addEventListener('click', () => {
         if (isCallActive) return;
+        playBeep();
         const num = key.getAttribute('data-num');
         if (num === '*' || num === '#') return;
         phoneInput.value = normalizeNumber(phoneInput.value + num);
     });
 });
 
-// কীবোর্ড টাইপ বা পেস্ট
 phoneInput.addEventListener('input', () => {
     phoneInput.value = normalizeNumber(phoneInput.value);
 });
 
-// Enter চাপলে কল শুরু
-phoneInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !isCallActive) {
-        callBtn.click();
-    }
-});
-
-// ব্যাকস্পেস বাটন
 backspaceBtn.addEventListener('click', () => {
     if (isCallActive) return;
     phoneInput.value = phoneInput.value.slice(0, -1);
 });
 
-// বাংলাদেশের বৈধ ১১ ডিজিট মোবাইল নম্বর যাচাই (013 - 019)
 function isValidBDNumber(num) {
     return /^01[3-9]\d{8}$/.test(num);
 }
 
-// কল টাইমার শুরু করা
-function startCallTimer() {
-    callTimer.classList.remove('hidden');
-    secondsElapsed = 0;
-    callTimer.textContent = '00:00';
-
-    timerInterval = setInterval(() => {
-        secondsElapsed++;
-        remainingFreeSeconds--;
-
-        callTimer.textContent = formatTime(secondsElapsed);
-        balanceDisplay.textContent = formatTime(Math.max(0, remainingFreeSeconds));
-
-        if (remainingFreeSeconds <= 0) {
-            stopCall('ফ্রি মিনিট শেষ হওয়ায় কল কেটে গেছে');
-        }
-    }, 1000);
+function getContactName(num) {
+    const found = savedContacts.find(c => c.number === num);
+    return found ? found.name : 'অজানা নম্বর';
 }
 
-// কল শেষ করার ফাংশন
-function stopCall(reasonText) {
-    if (activeLiveCall) {
-        activeLiveCall.disconnect();
-        activeLiveCall = null;
+function renderContacts() {
+    if (savedContacts.length === 0) {
+        contactList.innerHTML = '<p class="empty-msg">কোনো কন্টাক্ট সেভ করা নেই</p>';
+        return;
     }
-    clearTimeout(ringTimeout);
-    clearInterval(timerInterval);
-    isCallActive = false;
-
-    callStatus.textContent = reasonText;
-    callStatus.className = 'call-status';
-    callTimer.classList.add('hidden');
-
-    endCallBtn.classList.add('hidden');
-    callBtn.classList.remove('hidden');
-    phoneInput.disabled = false;
-    backspaceBtn.disabled = false;
-
-    setTimeout(() => {
-        if (!isCallActive) {
-            callStatus.textContent = 'কল করার জন্য প্রস্তুত';
-        }
-    }, 3000);
+    contactList.innerHTML = savedContacts.map((c, idx) => `
+        <div class="list-item">
+            <div class="item-left">
+                <div class="call-type-badge badge-incoming">👤</div>
+                <div class="item-info">
+                    <h4>${c.name}</h4>
+                    <p>+88${c.number}</p>
+                </div>
+            </div>
+            <div>
+                <button type="button" class="mini-call-btn" onclick="quickDial('${c.number}')" title="কল করুন">📞</button>
+                <button type="button" class="text-danger-btn" onclick="deleteContact(${idx})" title="মুছুন">🗑️</button>
+            </div>
+        </div>
+    `).join('');
 }
 
-// কল শুরু করার বাটন
-callBtn.addEventListener('click', async () => {
-    const number = normalizeNumber(phoneInput.value);
-    phoneInput.value = number;
-
-    if (remainingFreeSeconds <= 0) {
-        callStatus.textContent = 'ফ্রি মিনিট শেষ! নতুন ব্যালেন্স যোগ করুন';
-        callStatus.className = 'call-status error';
+function renderHistory() {
+    if (callHistory.length === 0) {
+        historyList.innerHTML = '<p class="empty-msg">এখনো কোনো কল রেকর্ড নেই</p>';
         return;
     }
+    historyList.innerHTML = callHistory.map(h => {
+        let icon = '↗️';
+        let badgeClass = 'badge-outgoing';
+        let label = 'আউটগোয়িং কল';
 
-    if (!isValidBDNumber(number)) {
-        callStatus.textContent = 'সঠিক ১১ ডিজিটের নম্বর দিন (যেমন: 017XXXXXXXX)';
-        callStatus.className = 'call-status error';
-        return;
-    }
-
-    isCallActive = true;
-    callBtn.classList.add('hidden');
-    endCallBtn.classList.remove('hidden');
-    phoneInput.disabled = true;
-    backspaceBtn.disabled = true;
-
-    const fullBDNumber = `+88${number}`;
-    const tenDigitForServer = number.substring(1); // সার্ভারের জন্য 1XXXXXXXXX
-
-    callStatus.textContent = `${fullBDNumber} নম্বরে সংযোগ পাঠানো হচ্ছে...`;
-    callStatus.className = 'call-status calling';
-
-    try {
-        const response = await fetch('/api/make-call', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phoneNumber: tenDigitForServer })
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-            stopCall(result.message || 'কল করা সম্ভব হয়নি');
-            return;
+        if (h.type === 'incoming') {
+            icon = '↙️';
+            badgeClass = 'badge-incoming';
+            label = 'ইনকামিং রিসিভড';
+        } else if (h.type === 'missed') {
+            icon = '❌';
+            badgeClass = 'badge-missed';
+            label = 'মিসড কল';
         }
 
-        callStatus.textContent = `${fullBDNumber} নম্বরে রিং হচ্ছে...`;
+        return `
+            <div class="list-item">
+                <div class="item-left">
+                    <div class="call-type-badge ${badgeClass}">${icon}</div>
+                    <div class="item-info">
+                        <h4>${getContactName(h.number)}</h4>
+                        <p>+88${h.number} • ${label} (${h.duration})</p>
+                        <p>${h.time}</p>
+                    </div>
+                </div>
+                <button type="button" class="mini-call-btn" onclick="quickDial('${h.number}')" title="কলব্যাক করুন">📞</button>
+            </div>
+        `;
+    }).join('');
+}
 
-        ringTimeout = setTimeout(() => {
-            callStatus.textContent = result.mode === 'live'
-                ? 'আসল কল সংযুক্ত! এখন কথা বলুন'
-                : 'সার্ভার টেস্ট কল সংযুক্ত (গেটওয়ে কী যুক্ত করলে ফোনে রিং হবে)';
-            callStatus.className = 'call-status connected';
-            startCallTimer();
-        }, 2500);
+function addCallRecord(number, type, durationSec) {
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    callHistory.unshift({
+        number: number,
+        type: type,
+        time: now,
+        duration: formatTime(durationSec)
+    });
+    localStorage.setItem('freecall_history', JSON.stringify(callHistory));
+    renderHistory();
+}
 
-    } catch (error) {
-        stopCall('সার্ভার বন্ধ আছে! টার্মিনালে node server.js চালু করুন');
+window.quickDial = function(num) {
+    if (isCallActive) return;
+    phoneInput.value = num;
+    const keypadTab = document.querySelector('[data-target="tab-keypad"]');
+    if (keypadTab) keypadTab.click();
+    callBtn.click();
+};
+
+window.deleteContact = function(idx) {
+    savedContacts.splice(idx, 1);
+    localStorage.setItem('freecall_contacts', JSON.stringify(savedContacts));
+    renderContacts();
+    renderHistory();
+};
+
+renderContacts();
+renderHistory();
+
+function openContactModal(prefillNumber = '') {
+    contactNameInput.value = '';
+    contactNumberInput.value = prefillNumber;
+    contactModal.classList.remove('hidden');
+}
+
+saveQuickContactBtn.addEventListener('click', () => openContactModal(phoneInput.value));
+openAddContactBtn.addEventListener('click', () => openContactModal(''));
+cancelContactBtn.addEventListener('click', () => contactModal.classList.add('hidden'));
+
+saveContactConfirmBtn.addEventListener('click', () => {
+    const name = contactNameInput.value.trim();
+    const num = normalizeNumber(contactNumberInput.value);
+    if (!name || !isValidBDNumber(num)) {
+        alert('সঠিক নাম এবং ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)');
+        return;
     }
-});
-
-// কল কাটার বাটন
-endCallBtn.addEventListener('click', () => {
-    stopCall('কল শেষ হয়েছে');
-});
+    const existingIndex = savedContacts.findIndex(c => c.number === num);
+    if (existingIndex !== -1) {
+        savedContacts[existingIndex].name = name;
+    } else {
+        savedContacts.unshift({ name, number: num });
+    }
